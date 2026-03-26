@@ -77,13 +77,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (interests.length === 0) {
-    return NextResponse.json(
-      { error: "Choose at least one interest." },
-      { status: 400 },
-    );
-  }
-
   const result = await updateDb((db) => {
     const handleExists = db.users.some(
       (candidate) => candidate.handle.toLowerCase() === handleInput,

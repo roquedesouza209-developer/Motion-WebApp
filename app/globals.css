@@ -875,7 +875,7 @@ body {
 .auth-grid {
   width: min(980px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
   gap: 2.5rem;
   align-items: center;
 }
@@ -887,7 +887,7 @@ body {
 
 .auth-showcase {
   position: relative;
-  width: min(34rem, 100%);
+  width: min(35rem, 100%);
   overflow: hidden;
   border-radius: 2rem;
   border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
@@ -899,6 +899,11 @@ body {
     0 28px 80px -48px rgba(2, 8, 23, 0.72),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
   isolation: isolate;
+}
+
+.auth-showcase-photo-panel {
+  min-height: 41rem;
+  padding: 1.35rem;
 }
 
 .auth-showcase-glow {
@@ -1127,6 +1132,33 @@ body {
   box-shadow: 0 8px 16px -12px color-mix(in srgb, var(--brand) 50%, transparent);
 }
 
+.auth-showcase-frame {
+  position: relative;
+  height: calc(100% - 3.1rem);
+  min-height: 36rem;
+  margin-top: 1rem;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  background: color-mix(in srgb, var(--plain-bg) 88%, transparent);
+  box-shadow:
+    0 28px 60px -42px rgba(2, 8, 23, 0.78),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.auth-showcase-frame-image {
+  object-fit: cover;
+  object-position: center top;
+}
+
+.auth-showcase-frame-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.54)),
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 34%);
+}
+
 @media (max-width: 920px) {
   .auth-showcase-grid {
     grid-template-columns: 1fr;
@@ -1134,6 +1166,14 @@ body {
 
   .auth-showcase-card-hero {
     grid-row: auto;
+  }
+
+  .auth-showcase-photo-panel {
+    min-height: 34rem;
+  }
+
+  .auth-showcase-frame {
+    min-height: 30rem;
   }
 }
 

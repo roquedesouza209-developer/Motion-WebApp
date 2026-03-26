@@ -1,14 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import type { FormEvent, ReactNode } from "react";
-import type { InterestKey } from "@/lib/interests";
 
 type AuthMode = "signin" | "signup";
-
-type InterestOption = {
-  id: InterestKey;
-  label: string;
-};
 
 type RememberCandidate = {
   name: string;
@@ -20,8 +15,6 @@ type AuthScreenProps = {
   authFirstName: string;
   authLastName: string;
   authUsername: string;
-  authInterests: string[];
-  interestOptions: readonly InterestOption[];
   email: string;
   password: string;
   authHint: string | null;
@@ -33,7 +26,6 @@ type AuthScreenProps = {
   onChangeFirstName: (value: string) => void;
   onChangeLastName: (value: string) => void;
   onChangeUsername: (value: string) => void;
-  onToggleInterest: (interestId: InterestKey) => void;
   onChangeEmail: (value: string) => void;
   onChangePassword: (value: string) => void;
   onRememberChoice: (shouldSave: boolean) => void;
@@ -46,8 +38,6 @@ export default function AuthScreen({
   authFirstName,
   authLastName,
   authUsername,
-  authInterests,
-  interestOptions,
   email,
   password,
   authHint,
@@ -59,7 +49,6 @@ export default function AuthScreen({
   onChangeFirstName,
   onChangeLastName,
   onChangeUsername,
-  onToggleInterest,
   onChangeEmail,
   onChangePassword,
   onRememberChoice,
@@ -69,71 +58,6 @@ export default function AuthScreen({
     <>
       <div className="auth-theme-toggle">{themePicker}</div>
       <div className="auth-grid">
-        <div className="auth-preview" aria-hidden="true">
-          <section className="auth-showcase">
-            <div className="auth-showcase-glow auth-showcase-glow-primary" />
-            <div className="auth-showcase-glow auth-showcase-glow-secondary" />
-            <div className="auth-showcase-badge">Built for creators, friends, and live rooms</div>
-            <h2 className="auth-showcase-title">A calmer welcome screen for a louder app.</h2>
-            <p className="auth-showcase-copy">
-              Motion brings posts, reels, live streams, random video chat, and creator tools
-              together without making the first screen feel cramped.
-            </p>
-
-            <div className="auth-showcase-orbit">
-              {["Posts", "Reels", "Moves", "Live", "Messages"].map((item) => (
-                <span key={item} className="auth-showcase-orbit-chip">
-                  {item}
-                </span>
-              ))}
-            </div>
-
-            <div className="auth-showcase-grid">
-              <article className="auth-showcase-card auth-showcase-card-hero">
-                <p className="auth-showcase-card-label">Today in Motion</p>
-                <div className="auth-showcase-photo">
-                  <div className="auth-showcase-photo-overlay">
-                    <span className="auth-showcase-photo-pill">Now live</span>
-                    <p className="auth-showcase-photo-title">Moments, calls, and creator tools in one place.</p>
-                  </div>
-                </div>
-                <div className="auth-showcase-stats">
-                  <div>
-                    <strong>24</strong>
-                    <span>New posts</span>
-                  </div>
-                  <div>
-                    <strong>8</strong>
-                    <span>Live rooms</span>
-                  </div>
-                  <div>
-                    <strong>5</strong>
-                    <span>Matched interests</span>
-                  </div>
-                </div>
-              </article>
-
-              <article className="auth-showcase-card">
-                <p className="auth-showcase-card-label">Radar pulse</p>
-                <div className="auth-showcase-mini-list">
-                  <span>Travel creators are trending</span>
-                  <span>Night edits getting saved fast</span>
-                  <span>Live collabs starting now</span>
-                </div>
-              </article>
-
-              <article className="auth-showcase-card">
-                <p className="auth-showcase-card-label">Creator studio</p>
-                <div className="auth-showcase-bars">
-                  <span style={{ width: "82%" }} />
-                  <span style={{ width: "61%" }} />
-                  <span style={{ width: "74%" }} />
-                </div>
-              </article>
-            </div>
-          </section>
-        </div>
-
         <div className="auth-stack">
           <main className="auth-card">
             <div className="auth-logo" style={{ fontFamily: "var(--font-heading)" }}>
@@ -170,42 +94,6 @@ export default function AuthScreen({
                     type="text"
                     placeholder="Username"
                   />
-                  <div className="rounded-[24px] border border-[var(--line)] bg-white px-4 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Interests
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Pick what you want Motion to prioritize in your feed.
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-[var(--line)] px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                        {authInterests.length} selected
-                      </span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {interestOptions.map((interest) => {
-                        const active = authInterests.includes(interest.id);
-
-                        return (
-                          <button
-                            key={interest.id}
-                            type="button"
-                            onClick={() => onToggleInterest(interest.id)}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                              active
-                                ? "border-[var(--brand)] bg-[var(--brand)] text-white"
-                                : "border-[var(--line)] bg-white text-slate-600 hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                            }`}
-                            aria-pressed={active}
-                          >
-                            {interest.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </>
               ) : null}
               <input
@@ -268,6 +156,25 @@ export default function AuthScreen({
               </p>
             )}
           </div>
+        </div>
+
+        <div className="auth-preview" aria-hidden="true">
+          <section className="auth-showcase auth-showcase-photo-panel">
+            <div className="auth-showcase-glow auth-showcase-glow-primary" />
+            <div className="auth-showcase-glow auth-showcase-glow-secondary" />
+            <div className="auth-showcase-badge">Built for creators, friends, and live rooms</div>
+            <div className="auth-showcase-frame">
+              <Image
+                src="/auth/sign-up-hero.png"
+                alt="Stylized portrait for Motion sign in"
+                fill
+                priority
+                sizes="(max-width: 920px) 100vw, 50vw"
+                className="auth-showcase-frame-image"
+              />
+              <div className="auth-showcase-frame-shade" />
+            </div>
+          </section>
         </div>
       </div>
 

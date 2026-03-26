@@ -934,7 +934,6 @@ export default function Home() {
   const [authFirstName, setAuthFirstName] = useState("");
   const [authLastName, setAuthLastName] = useState("");
   const [authUsername, setAuthUsername] = useState("");
-  const [authInterests, setAuthInterests] = useState<InterestKey[]>([]);
   const [savedAccounts, setSavedAccounts] = useState<StoredAccount[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]);
@@ -2581,11 +2580,6 @@ export default function Home() {
     setError(null);
     setAuthHint(null);
 
-    if (authInterests.length === 0) {
-      setError("Choose at least one interest.");
-      return;
-    }
-
     try {
       const payload = await req<{ user: User }>("/api/auth/register", {
         method: "POST",
@@ -2595,7 +2589,6 @@ export default function Home() {
           handle: authUsername.trim(),
           email: email.trim(),
           password,
-          interests: authInterests,
         }),
       });
       setRememberCandidate(payload.user);
@@ -4077,8 +4070,6 @@ export default function Home() {
           authFirstName={authFirstName}
           authLastName={authLastName}
           authUsername={authUsername}
-          authInterests={authInterests}
-          interestOptions={INTEREST_OPTIONS}
           email={email}
           password={password}
           authHint={authHint}
@@ -4090,13 +4081,6 @@ export default function Home() {
           onChangeFirstName={setAuthFirstName}
           onChangeLastName={setAuthLastName}
           onChangeUsername={setAuthUsername}
-          onToggleInterest={(interestId) =>
-            setAuthInterests((current) =>
-              current.includes(interestId)
-                ? current.filter((item) => item !== interestId)
-                : [...current, interestId],
-            )
-          }
           onChangeEmail={setEmail}
           onChangePassword={setPassword}
           onRememberChoice={handleRememberChoice}
