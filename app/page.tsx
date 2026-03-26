@@ -8,6 +8,7 @@ import FeedPostCard from "@/components/home/feed-post-card";
 import ImmersiveVideoViewer from "@/components/media/immersive-video-viewer";
 import MoveComposerModal from "@/components/home/move-composer-modal";
 import HomeRightRail from "@/components/home/right-rail";
+import SupportWidget from "@/components/support/support-widget";
 import UserAvatar from "@/components/user-avatar";
 import {
   MOTION_CALL_STATE_EVENT,
@@ -400,8 +401,6 @@ type CommentEntry = {
   time: string;
 };
 
-const DEMO_EMAIL = "demo@motion.app";
-const DEMO_PASSWORD = "demo12345";
 const DEFAULT_POST_LOCATION = "";
 const ACCOUNTS_STORAGE_KEY = "motion-accounts";
 const LAST_ACCOUNT_KEY = "motion-last-account";
@@ -862,133 +861,6 @@ function ThemePicker({
   );
 }
 
-function SupportWidget({ defaultEmail }: { defaultEmail: string }) {
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState(defaultEmail);
-  const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [feedbackError, setFeedbackError] = useState(false);
-
-  useEffect(() => {
-    setEmail((current) => {
-      if (current.trim()) {
-        return current;
-      }
-      return defaultEmail;
-    });
-  }, [defaultEmail]);
-
-  const submitSupport = async (event: FormEvent) => {
-    event.preventDefault();
-    setFeedback(null);
-    setFeedbackError(false);
-
-    if (!email.trim()) {
-      setFeedbackError(true);
-      setFeedback("Email is required.");
-      return;
-    }
-
-    if (!message.trim()) {
-      setFeedbackError(true);
-      setFeedback("Message is required.");
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      await req<{ ok: boolean }>("/api/support", {
-        method: "POST",
-        body: JSON.stringify({
-          email: email.trim(),
-          message: message.trim(),
-        }),
-      });
-      setFeedback("Support message sent.");
-      setFeedbackError(false);
-      setMessage("");
-    } catch (error) {
-      const details =
-        error instanceof Error ? error.message : "Failed to send support message.";
-      setFeedback(details);
-      setFeedbackError(true);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <>
-      {open ? (
-        <section className="support-panel motion-surface p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-900">Support</p>
-            <button
-              type="button"
-              className="rounded-md border border-[var(--line)] px-2 py-0.5 text-xs"
-              onClick={() => setOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-          <form className="space-y-2" onSubmit={submitSupport}>
-            <label className="block text-xs font-semibold text-slate-600">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="h-9 w-full rounded-lg border border-[var(--line)] bg-white px-3 text-sm"
-              placeholder="you@example.com"
-            />
-            <label className="block text-xs font-semibold text-slate-600">Message</label>
-            <textarea
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              className="min-h-24 w-full rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm"
-              placeholder="How can we help?"
-            />
-            <button
-              type="submit"
-              disabled={submitting}
-              className="h-9 w-full rounded-lg bg-[var(--brand)] px-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {submitting ? "Sending..." : "Send"}
-            </button>
-            {feedback ? (
-              <p className={`text-xs ${feedbackError ? "text-red-700" : "text-emerald-700"}`}>
-                {feedback}
-              </p>
-            ) : null}
-          </form>
-        </section>
-      ) : null}
-      <button
-        type="button"
-        className="support-fab"
-        aria-label="Contact support"
-        title="Contact support"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <svg
-          viewBox="0 0 20 20"
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M10 16.7c4.2 0 7.5-2.9 7.5-6.5S14.2 3.8 10 3.8 2.5 6.7 2.5 10.2c0 1.5.6 2.8 1.6 3.9l-.3 2.1 2.5-.6c1 .6 2.3 1.1 3.7 1.1Z" />
-          <path d="M7.8 9.1a2.3 2.3 0 0 1 4.4.8c0 1.5-1.6 1.8-1.8 3" />
-          <path d="M10.4 14.6h.1" />
-        </svg>
-      </button>
-    </>
-  );
-}
-
 function ViewportPicker({
   mode,
   onChange,
@@ -1056,8 +928,8 @@ function ViewportPicker({
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState(DEMO_EMAIL);
-  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [authFirstName, setAuthFirstName] = useState("");
   const [authLastName, setAuthLastName] = useState("");
@@ -4209,8 +4081,6 @@ export default function Home() {
           interestOptions={INTEREST_OPTIONS}
           email={email}
           password={password}
-          demoEmail={DEMO_EMAIL}
-          demoPassword={DEMO_PASSWORD}
           authHint={authHint}
           error={error}
           rememberPromptOpen={rememberPromptOpen}

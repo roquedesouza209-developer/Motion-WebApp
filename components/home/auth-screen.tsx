@@ -24,8 +24,6 @@ type AuthScreenProps = {
   interestOptions: readonly InterestOption[];
   email: string;
   password: string;
-  demoEmail: string;
-  demoPassword: string;
   authHint: string | null;
   error: string | null;
   rememberPromptOpen: boolean;
@@ -52,8 +50,6 @@ export default function AuthScreen({
   interestOptions,
   email,
   password,
-  demoEmail,
-  demoPassword,
   authHint,
   error,
   rememberPromptOpen,
@@ -74,33 +70,63 @@ export default function AuthScreen({
       <div className="auth-theme-toggle">{themePicker}</div>
       <div className="auth-grid">
         <div className="auth-preview" aria-hidden="true">
-          <div className="auth-phone">
-            <div className="auth-phone-screen">
-              <div className="auth-phone-bar">
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="auth-phone-story-row">
-                {["A", "B", "C", "D", "E"].map((item) => (
-                  <span key={item} className="auth-phone-story" />
-                ))}
-              </div>
-              <div className="auth-phone-post">
-                <div className="auth-phone-post-media" />
-                <div className="auth-phone-post-lines">
-                  <span />
-                  <span />
-                </div>
-              </div>
-              <div className="auth-phone-post">
-                <div className="auth-phone-post-media is-short" />
-                <div className="auth-phone-post-lines">
-                  <span />
-                </div>
-              </div>
+          <section className="auth-showcase">
+            <div className="auth-showcase-glow auth-showcase-glow-primary" />
+            <div className="auth-showcase-glow auth-showcase-glow-secondary" />
+            <div className="auth-showcase-badge">Built for creators, friends, and live rooms</div>
+            <h2 className="auth-showcase-title">A calmer welcome screen for a louder app.</h2>
+            <p className="auth-showcase-copy">
+              Motion brings posts, reels, live streams, random video chat, and creator tools
+              together without making the first screen feel cramped.
+            </p>
+
+            <div className="auth-showcase-orbit">
+              {["Posts", "Reels", "Moves", "Live", "Messages"].map((item) => (
+                <span key={item} className="auth-showcase-orbit-chip">
+                  {item}
+                </span>
+              ))}
             </div>
-          </div>
+
+            <div className="auth-showcase-grid">
+              <article className="auth-showcase-card auth-showcase-card-hero">
+                <p className="auth-showcase-card-label">Today in Motion</p>
+                <div className="auth-showcase-wave" />
+                <div className="auth-showcase-stats">
+                  <div>
+                    <strong>24</strong>
+                    <span>New posts</span>
+                  </div>
+                  <div>
+                    <strong>8</strong>
+                    <span>Live rooms</span>
+                  </div>
+                  <div>
+                    <strong>5</strong>
+                    <span>Matched interests</span>
+                  </div>
+                </div>
+              </article>
+
+              <article className="auth-showcase-card">
+                <p className="auth-showcase-card-label">Radar pulse</p>
+                <div className="auth-showcase-mini-list">
+                  <span>Travel creators are trending</span>
+                  <span>Night edits getting saved fast</span>
+                  <span>Live collabs starting now</span>
+                </div>
+              </article>
+
+              <article className="auth-showcase-card">
+                <p className="auth-showcase-card-label">Creator studio</p>
+                <div className="auth-showcase-bars">
+                  <span style={{ width: "82%" }} />
+                  <span style={{ width: "61%" }} />
+                  <span style={{ width: "74%" }} />
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
 
         <div className="auth-stack">
@@ -203,9 +229,6 @@ export default function AuthScreen({
             <div className="auth-divider">
               <span>OR</span>
             </div>
-            <p className="auth-demo">
-              Demo login: <strong>{demoEmail}</strong> / <strong>{demoPassword}</strong>
-            </p>
             {authHint ? <p className="auth-hint">{authHint}</p> : null}
             {error ? <p className="auth-error">{error}</p> : null}
           </main>
@@ -239,13 +262,6 @@ export default function AuthScreen({
                 </button>
               </p>
             )}
-          </div>
-          <div className="auth-apps">
-            <p>Get the app.</p>
-            <div className="auth-store-row">
-              <span>App Store</span>
-              <span>Google Play</span>
-            </div>
           </div>
         </div>
       </div>

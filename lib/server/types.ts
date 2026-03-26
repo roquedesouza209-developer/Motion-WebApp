@@ -294,6 +294,15 @@ export type ProfileViewRecord = {
   createdAt: string;
 };
 
+export type SupportRequestRecord = {
+  id: string;
+  email: string;
+  message: string;
+  userId: string | null;
+  status: "open" | "resolved";
+  createdAt: string;
+};
+
 export type CreatorReportScheduleRecord = {
   id: string;
   userId: string;
@@ -336,6 +345,7 @@ export type MotionDb = {
   follows: FollowRecord[];
   notifications: NotificationRecord[];
   profileViews: ProfileViewRecord[];
+  supportRequests: SupportRequestRecord[];
   creatorReportSchedules: CreatorReportScheduleRecord[];
   creatorReportDeliveries: CreatorReportDeliveryRecord[];
 };

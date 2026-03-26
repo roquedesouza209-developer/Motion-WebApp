@@ -161,34 +161,55 @@ export default function PrivacySettingsModal({
 
           {effectiveAccountType === "creator" ? (
             <div className="rounded-2xl border border-[var(--brand)]/20 bg-[var(--brand)]/8 p-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4">
                 <div className="max-w-md">
-                  <p className="text-sm font-semibold text-slate-900">Creator Studio</p>
+                  <p className="text-sm font-semibold text-slate-900">Creator tools</p>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Your analytics now live in a dedicated studio with cleaner charts,
-                    better spacing, and a proper creator dashboard.
+                    Your analytics and internal support queue now live in dedicated spaces
+                    instead of being crammed into Settings.
                   </p>
                 </div>
-                <Link
-                  href="/creator-studio"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--brand)] px-5 text-sm font-semibold text-white transition hover:opacity-95"
-                >
-                  <svg
-                    viewBox="0 0 20 20"
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Link
+                    href="/creator-studio"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--brand)] px-5 text-sm font-semibold text-white transition hover:opacity-95"
                   >
-                    <path d="M3 16h14" />
-                    <path d="M5 13V8" />
-                    <path d="M10 13V4" />
-                    <path d="M15 13v-6" />
-                  </svg>
-                  Open Creator Studio
-                </Link>
+                    <svg
+                      viewBox="0 0 20 20"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 16h14" />
+                      <path d="M5 13V8" />
+                      <path d="M10 13V4" />
+                      <path d="M15 13v-6" />
+                    </svg>
+                    Open Creator Studio
+                  </Link>
+                  <Link
+                    href="/support-requests"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[var(--brand)]/25 bg-white px-5 text-sm font-semibold text-[var(--brand)] transition hover:border-[var(--brand)] hover:bg-[var(--brand)]/5"
+                  >
+                    <svg
+                      viewBox="0 0 20 20"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M10 16.5c3.8 0 6.9-2.8 6.9-6.2S13.8 4.1 10 4.1 3.1 6.9 3.1 10.3c0 1.3.5 2.6 1.4 3.5L4.2 16l2.2-.6c1 .7 2.3 1.1 3.6 1.1Z" />
+                      <path d="M7.1 8.8h5.8" />
+                      <path d="M7.1 11.4h4.1" />
+                    </svg>
+                    Open Support Inbox
+                  </Link>
+                </div>
               </div>
             </div>
           ) : selectedAccountType === "creator" ? (

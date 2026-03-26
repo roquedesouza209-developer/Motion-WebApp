@@ -29,6 +29,7 @@ import type {
   RandomChatSignalRecord,
   SessionRecord,
   StoryRecord,
+  SupportRequestRecord,
   UserRecord,
 } from "@/lib/server/types";
 
@@ -544,6 +545,7 @@ function createSeedDatabase(): MotionDb {
   const sessions: SessionRecord[] = [];
   const comments = createSeedComments(posts);
   const profileViews: ProfileViewRecord[] = [];
+  const supportRequests: SupportRequestRecord[] = [];
   const liveSessions: LiveSessionRecord[] = [];
   const liveComments: LiveCommentRecord[] = [];
   const callSessions: CallSessionRecord[] = [];
@@ -568,6 +570,7 @@ function createSeedDatabase(): MotionDb {
     follows,
     notifications,
     profileViews,
+    supportRequests,
     creatorReportSchedules: [],
     creatorReportDeliveries: [],
   };
@@ -1320,6 +1323,30 @@ function normalizeDatabase(raw: unknown): MotionDb {
       : [],
     profileViews: Array.isArray(candidate.profileViews)
       ? (candidate.profileViews as ProfileViewRecord[])
+      : [],
+    supportRequests: Array.isArray((candidate as { supportRequests?: unknown }).supportRequests)
+      ? (
+          (candidate as { supportRequests: unknown[] }).supportRequests as Partial<SupportRequestRecord>[]
+        )
+          .filter(
+            (request): request is Partial<SupportRequestRecord> & {
+              email: string;
+              message: string;
+            } =>
+              Boolean(request && typeof request.email === "string") &&
+              typeof request.message === "string",
+          )
+          .map((request) => ({
+            id: typeof request.id === "string" ? request.id : createId("sup"),
+            email: request.email,
+            message: request.message,
+            userId: typeof request.userId === "string" ? request.userId : null,
+            status: request.status === "resolved" ? "resolved" : "open",
+            createdAt:
+              typeof request.createdAt === "string"
+                ? request.createdAt
+                : new Date().toISOString(),
+          }))
       : [],
     creatorReportSchedules: Array.isArray(candidate.creatorReportSchedules)
       ? (candidate.creatorReportSchedules as Partial<CreatorReportScheduleRecord>[])
