@@ -151,6 +151,12 @@ export type ConversationRecord = {
   typingByUserId?: Record<string, string>;
   chatWallpaper?: ChatWallpaperSelection;
   chatWallpaperUrl?: string;
+  chatWallpaperLight?: ChatWallpaperSelection;
+  chatWallpaperLightUrl?: string;
+  chatWallpaperDark?: ChatWallpaperSelection;
+  chatWallpaperDarkUrl?: string;
+  chatWallpaperBlur?: number;
+  chatWallpaperDim?: number;
   updatedAt: string;
 };
 
@@ -475,6 +481,12 @@ export type ConversationDto = {
   typing: boolean;
   chatWallpaper?: ChatWallpaperSelection;
   chatWallpaperUrl?: string;
+  chatWallpaperLight?: ChatWallpaperSelection;
+  chatWallpaperLightUrl?: string;
+  chatWallpaperDark?: ChatWallpaperSelection;
+  chatWallpaperDarkUrl?: string;
+  chatWallpaperBlur?: number;
+  chatWallpaperDim?: number;
   missedCallCount: number;
   hasRecordingHistory: boolean;
   recordingCount: number;

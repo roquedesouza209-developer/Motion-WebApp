@@ -85,12 +85,18 @@ export async function GET(request: Request, context: RouteContext) {
           isGroup,
           memberCount: conversation.participantIds.length,
           status: isGroup ? "Away" : resolvePresence(otherUser),
-          typing: otherUserIds.some((participantId) =>
-            isTypingActive(conversation.typingByUserId?.[participantId]),
-          ),
-          chatWallpaper: conversation.chatWallpaper,
-          chatWallpaperUrl: conversation.chatWallpaperUrl,
-        },
+           typing: otherUserIds.some((participantId) =>
+             isTypingActive(conversation.typingByUserId?.[participantId]),
+           ),
+           chatWallpaper: conversation.chatWallpaper,
+           chatWallpaperUrl: conversation.chatWallpaperUrl,
+           chatWallpaperLight: conversation.chatWallpaperLight,
+           chatWallpaperLightUrl: conversation.chatWallpaperLightUrl,
+           chatWallpaperDark: conversation.chatWallpaperDark,
+           chatWallpaperDarkUrl: conversation.chatWallpaperDarkUrl,
+           chatWallpaperBlur: conversation.chatWallpaperBlur,
+           chatWallpaperDim: conversation.chatWallpaperDim,
+         },
       messages,
     };
   });

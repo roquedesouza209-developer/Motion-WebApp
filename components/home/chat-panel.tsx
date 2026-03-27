@@ -5,10 +5,20 @@ import { useEffect, useRef, useState } from "react";
 
 import Image from "next/image";
 import {
+  CHAT_WALLPAPER_BLUR_MAX,
+  CHAT_WALLPAPER_BLUR_MIN,
+  CHAT_WALLPAPER_DIM_MAX,
+  CHAT_WALLPAPER_DIM_MIN,
   CHAT_WALLPAPER_OPTIONS,
+  CHAT_WALLPAPER_TARGETS,
+  DEFAULT_CHAT_WALLPAPER_BLUR,
+  DEFAULT_CHAT_WALLPAPER_DIM,
   DEFAULT_CHAT_WALLPAPER,
+  resolveChatAppearanceTone,
+  type ChatAppearanceTone,
   type ChatWallpaper,
   type ChatWallpaperSelection,
+  type ChatWallpaperTarget,
 } from "@/lib/chat-wallpapers";
 
 type Presence = "Online" | "Away";
@@ -34,6 +44,12 @@ type Conversation = {
   hasOutgoingCallHistory: boolean;
   chatWallpaper?: ChatWallpaperSelection;
   chatWallpaperUrl?: string;
+  chatWallpaperLight?: ChatWallpaperSelection;
+  chatWallpaperLightUrl?: string;
+  chatWallpaperDark?: ChatWallpaperSelection;
+  chatWallpaperDarkUrl?: string;
+  chatWallpaperBlur?: number;
+  chatWallpaperDim?: number;
   lastCallMode?: "voice" | "video";
   lastCallEvent?: "started" | "accepted" | "declined" | "ended" | "missed";
 };
@@ -95,6 +111,12 @@ type ChatPanelProps = {
   callBusy?: boolean;
   chatWallpaper?: ChatWallpaperSelection;
   chatWallpaperUrl?: string;
+  chatWallpaperLight?: ChatWallpaperSelection;
+  chatWallpaperLightUrl?: string;
+  chatWallpaperDark?: ChatWallpaperSelection;
+  chatWallpaperDarkUrl?: string;
+  chatWallpaperBlur?: number;
+  chatWallpaperDim?: number;
   defaultChatWallpaper?: ChatWallpaper;
   savingChatWallpaper?: boolean;
   chatThreadRef: RefObject<HTMLDivElement | null>;
@@ -117,9 +139,10 @@ type ChatPanelProps = {
   onStartVoiceCall: () => void;
   onStartVideoCall: () => void;
   onOpenGroupVideoCall?: () => void;
-  onChatWallpaperChange?: (wallpaper: ChatWallpaper) => void;
-  onUploadChatWallpaper?: (file: File | null) => void;
-  onResetChatWallpaper?: () => void;
+  onChatWallpaperChange?: (wallpaper: ChatWallpaper, target: ChatWallpaperTarget) => void;
+  onUploadChatWallpaper?: (file: File | null, target: ChatWallpaperTarget) => void;
+  onResetChatWallpaper?: (target: ChatWallpaperTarget) => void;
+  onChatWallpaperEffectsChange?: (effects: { blur: number; dim: number }) => void;
   onDeleteRecording?: (messageId: string) => void;
   deletingRecordingId?: string | null;
   onDeleteAllRecordings?: () => void;
@@ -260,6 +283,98 @@ function CallLogIcon({
   );
 }
 
+type WallpaperState = {
+  chatWallpaper?: ChatWallpaperSelection;
+  chatWallpaperUrl?: string;
+  chatWallpaperLight?: ChatWallpaperSelection;
+  chatWallpaperLightUrl?: string;
+  chatWallpaperDark?: ChatWallpaperSelection;
+  chatWallpaperDarkUrl?: string;
+  chatWallpaperBlur?: number;
+  chatWallpaperDim?: number;
+};
+
+function getWallpaperSlotState(
+  wallpaperState: WallpaperState,
+  target: ChatWallpaperTarget,
+): {
+  wallpaper?: ChatWallpaperSelection;
+  url?: string;
+} {
+  if (target === "light") {
+    return {
+      wallpaper: wallpaperState.chatWallpaperLight,
+      url: wallpaperState.chatWallpaperLightUrl,
+    };
+  }
+
+  if (target === "dark") {
+    return {
+      wallpaper: wallpaperState.chatWallpaperDark,
+      url: wallpaperState.chatWallpaperDarkUrl,
+    };
+  }
+
+  return {
+    wallpaper: wallpaperState.chatWallpaper,
+    url: wallpaperState.chatWallpaperUrl,
+  };
+}
+
+function resolveEffectiveWallpaper(
+  wallpaperState: WallpaperState,
+  appearanceTone: ChatAppearanceTone,
+  defaultChatWallpaper: ChatWallpaper,
+) {
+  const toneSlot =
+    appearanceTone === "light"
+      ? getWallpaperSlotState(wallpaperState, "light")
+      : getWallpaperSlotState(wallpaperState, "dark");
+  const universalSlot = getWallpaperSlotState(wallpaperState, "all");
+  const toneWallpaperReady =
+    toneSlot.wallpaper && (toneSlot.wallpaper !== "custom" || Boolean(toneSlot.url));
+  const universalWallpaperReady =
+    universalSlot.wallpaper &&
+    (universalSlot.wallpaper !== "custom" || Boolean(universalSlot.url));
+  const wallpaper = toneWallpaperReady
+    ? toneSlot.wallpaper
+    : universalWallpaperReady
+      ? universalSlot.wallpaper
+      : defaultChatWallpaper;
+  const url =
+    toneWallpaperReady && toneSlot.wallpaper === "custom"
+      ? toneSlot.url
+      : universalWallpaperReady && universalSlot.wallpaper === "custom"
+        ? universalSlot.url
+        : undefined;
+
+  return { wallpaper, url };
+}
+
+function buildWallpaperStyle({
+  wallpaper,
+  url,
+  blur,
+  dim,
+}: {
+  wallpaper?: ChatWallpaperSelection;
+  url?: string;
+  blur?: number;
+  dim?: number;
+}): CSSProperties {
+  const nextStyle = {
+    "--chat-wallpaper-blur": `${blur ?? DEFAULT_CHAT_WALLPAPER_BLUR}px`,
+    "--chat-wallpaper-dim-top": `${Math.min(0.82, 0.08 + (dim ?? DEFAULT_CHAT_WALLPAPER_DIM) / 100).toFixed(2)}`,
+    "--chat-wallpaper-dim-bottom": `${Math.min(0.94, 0.34 + (dim ?? DEFAULT_CHAT_WALLPAPER_DIM) / 100).toFixed(2)}`,
+  } as CSSProperties & Record<string, string>;
+
+  if (wallpaper === "custom" && url) {
+    nextStyle["--chat-custom-wallpaper-url"] = `url("${url}")`;
+  }
+
+  return nextStyle;
+}
+
 export default function ChatPanel({
   open,
   variant = "floating",
@@ -287,6 +402,12 @@ export default function ChatPanel({
   callBusy,
   chatWallpaper,
   chatWallpaperUrl,
+  chatWallpaperLight,
+  chatWallpaperLightUrl,
+  chatWallpaperDark,
+  chatWallpaperDarkUrl,
+  chatWallpaperBlur = DEFAULT_CHAT_WALLPAPER_BLUR,
+  chatWallpaperDim = DEFAULT_CHAT_WALLPAPER_DIM,
   defaultChatWallpaper = DEFAULT_CHAT_WALLPAPER,
   savingChatWallpaper = false,
   chatThreadRef,
@@ -312,6 +433,7 @@ export default function ChatPanel({
   onChatWallpaperChange,
   onUploadChatWallpaper,
   onResetChatWallpaper,
+  onChatWallpaperEffectsChange,
   onDeleteRecording,
   deletingRecordingId = null,
   onDeleteAllRecordings,
@@ -320,17 +442,112 @@ export default function ChatPanel({
   formatChatTime,
   formatVoiceDuration,
 }: ChatPanelProps) {
+  const [appearanceTone, setAppearanceTone] = useState<ChatAppearanceTone>("dark");
   const [wallpaperMenuOpen, setWallpaperMenuOpen] = useState(false);
+  const [wallpaperTarget, setWallpaperTarget] = useState<ChatWallpaperTarget>("all");
+  const [blurDraft, setBlurDraft] = useState(chatWallpaperBlur);
+  const [dimDraft, setDimDraft] = useState(chatWallpaperDim);
   const wallpaperMenuRef = useRef<HTMLDivElement | null>(null);
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
 
-  const resolvedWallpaper = chatWallpaper ?? defaultChatWallpaper;
-  const chatThreadStyle =
-    resolvedWallpaper === "custom" && chatWallpaperUrl
-      ? ({
-          "--chat-custom-wallpaper-url": `url("${chatWallpaperUrl}")`,
-        } as CSSProperties)
-      : undefined;
+  const selectedWallpaperState = getWallpaperSlotState(
+    {
+      chatWallpaper,
+      chatWallpaperUrl,
+      chatWallpaperLight,
+      chatWallpaperLightUrl,
+      chatWallpaperDark,
+      chatWallpaperDarkUrl,
+    },
+    wallpaperTarget,
+  );
+  const resolvedWallpaperState = resolveEffectiveWallpaper(
+    {
+      chatWallpaper,
+      chatWallpaperUrl,
+      chatWallpaperLight,
+      chatWallpaperLightUrl,
+      chatWallpaperDark,
+      chatWallpaperDarkUrl,
+    },
+    appearanceTone,
+    defaultChatWallpaper,
+  );
+  const resolvedWallpaper = resolvedWallpaperState.wallpaper;
+  const chatThreadStyle = buildWallpaperStyle({
+    wallpaper: resolvedWallpaperState.wallpaper,
+    url: resolvedWallpaperState.url,
+    blur: blurDraft,
+    dim: dimDraft,
+  });
+  const selectedWallpaperPreviewStyle = buildWallpaperStyle({
+    wallpaper: selectedWallpaperState.wallpaper,
+    url: selectedWallpaperState.url,
+    blur: blurDraft,
+    dim: dimDraft,
+  });
+
+  useEffect(() => {
+    setBlurDraft(chatWallpaperBlur);
+  }, [chatWallpaperBlur]);
+
+  useEffect(() => {
+    setDimDraft(chatWallpaperDim);
+  }, [chatWallpaperDim]);
+
+  useEffect(() => {
+    const syncAppearanceTone = () => {
+      const rootTheme = document.documentElement.getAttribute("data-theme");
+      if (rootTheme) {
+        setAppearanceTone(resolveChatAppearanceTone(rootTheme));
+        return;
+      }
+
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      setAppearanceTone(prefersDark ? "dark" : "light");
+    };
+
+    syncAppearanceTone();
+
+    const observer = new MutationObserver(syncAppearanceTone);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", syncAppearanceTone);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener("change", syncAppearanceTone);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!wallpaperMenuOpen) {
+      return;
+    }
+
+    if (blurDraft === chatWallpaperBlur && dimDraft === chatWallpaperDim) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      onChatWallpaperEffectsChange?.({
+        blur: blurDraft,
+        dim: dimDraft,
+      });
+    }, 220);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    blurDraft,
+    chatWallpaperBlur,
+    chatWallpaperDim,
+    dimDraft,
+    onChatWallpaperEffectsChange,
+    wallpaperMenuOpen,
+  ]);
 
   useEffect(() => {
     if (!wallpaperMenuOpen) {
@@ -562,6 +779,11 @@ export default function ChatPanel({
               const gradientIndex =
                 [...conversation.name].reduce((sum, char) => sum + char.charCodeAt(0), 0) %
                 gradients.length;
+              const conversationPreview = resolveEffectiveWallpaper(
+                conversation,
+                appearanceTone,
+                defaultChatWallpaper,
+              );
 
               return (
                 <button
@@ -577,6 +799,14 @@ export default function ChatPanel({
                     {initials}
                     {isActive ? <span className="presence-dot" /> : null}
                   </div>
+                  <span
+                    className={`chat-convo-wallpaper-preview is-${conversationPreview.wallpaper}`}
+                    style={buildWallpaperStyle({
+                      wallpaper: conversationPreview.wallpaper,
+                      url: conversationPreview.url,
+                    })}
+                    aria-hidden
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-semibold text-slate-900">
@@ -710,7 +940,26 @@ export default function ChatPanel({
                       <div className="chat-wallpaper-menu">
                         <div className="chat-wallpaper-menu-header">
                           <span>Wallpaper</span>
-                          <span>{savingChatWallpaper ? "Saving..." : "This chat only"}</span>
+                          <span>
+                            {savingChatWallpaper
+                              ? "Saving..."
+                              : `This chat only · ${appearanceTone} look active`}
+                          </span>
+                        </div>
+                        <div className="chat-wallpaper-targets">
+                          {CHAT_WALLPAPER_TARGETS.map((target) => (
+                            <button
+                              key={target.id}
+                              type="button"
+                              onClick={() => setWallpaperTarget(target.id)}
+                              className={`chat-wallpaper-target ${
+                                wallpaperTarget === target.id ? "is-active" : ""
+                              }`}
+                              disabled={savingChatWallpaper}
+                            >
+                              {target.label}
+                            </button>
+                          ))}
                         </div>
                         <input
                           ref={wallpaperInputRef}
@@ -718,7 +967,10 @@ export default function ChatPanel({
                           accept="image/*"
                           className="hidden"
                           onChange={(event) => {
-                            onUploadChatWallpaper?.(event.target.files?.[0] ?? null);
+                            onUploadChatWallpaper?.(
+                              event.target.files?.[0] ?? null,
+                              wallpaperTarget,
+                            );
                             event.target.value = "";
                             setWallpaperMenuOpen(false);
                           }}
@@ -735,20 +987,22 @@ export default function ChatPanel({
                           <button
                             type="button"
                             onClick={() => {
-                              onResetChatWallpaper?.();
+                              onResetChatWallpaper?.(wallpaperTarget);
                               setWallpaperMenuOpen(false);
                             }}
                             className="chat-wallpaper-action"
-                            disabled={savingChatWallpaper || chatWallpaper === undefined}
+                            disabled={
+                              savingChatWallpaper || selectedWallpaperState.wallpaper === undefined
+                            }
                           >
                             Use default
                           </button>
                         </div>
-                        {resolvedWallpaper === "custom" ? (
+                        {selectedWallpaperState.wallpaper === "custom" ? (
                           <div className="chat-wallpaper-custom-preview">
                             <span
                               className="chat-wallpaper-swatch is-custom"
-                              style={chatThreadStyle}
+                              style={selectedWallpaperPreviewStyle}
                               aria-hidden
                             />
                             <span className="chat-wallpaper-option-label">
@@ -762,11 +1016,11 @@ export default function ChatPanel({
                               key={option.id}
                               type="button"
                               onClick={() => {
-                                onChatWallpaperChange?.(option.id);
+                                onChatWallpaperChange?.(option.id, wallpaperTarget);
                                 setWallpaperMenuOpen(false);
                               }}
                               className={`chat-wallpaper-option ${
-                                resolvedWallpaper === option.id ? "is-active" : ""
+                                selectedWallpaperState.wallpaper === option.id ? "is-active" : ""
                               }`}
                               disabled={savingChatWallpaper}
                             >
@@ -779,6 +1033,36 @@ export default function ChatPanel({
                               </span>
                             </button>
                           ))}
+                        </div>
+                        <div className="chat-wallpaper-effects">
+                          <div className="chat-wallpaper-effects-header">
+                            <span>Effects</span>
+                            <span>{blurDraft}px blur · {dimDraft}% dim</span>
+                          </div>
+                          <label className="chat-wallpaper-slider">
+                            <span>Blur</span>
+                            <input
+                              type="range"
+                              min={CHAT_WALLPAPER_BLUR_MIN}
+                              max={CHAT_WALLPAPER_BLUR_MAX}
+                              value={blurDraft}
+                              onChange={(event) =>
+                                setBlurDraft(Number(event.target.value))
+                              }
+                            />
+                          </label>
+                          <label className="chat-wallpaper-slider">
+                            <span>Dim</span>
+                            <input
+                              type="range"
+                              min={CHAT_WALLPAPER_DIM_MIN}
+                              max={CHAT_WALLPAPER_DIM_MAX}
+                              value={dimDraft}
+                              onChange={(event) =>
+                                setDimDraft(Number(event.target.value))
+                              }
+                            />
+                          </label>
                         </div>
                       </div>
                     ) : null}

@@ -6,7 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ChatPanel from "@/components/home/chat-panel";
 import UserAvatar from "@/components/user-avatar";
-import type { ChatWallpaper, ChatWallpaperSelection } from "@/lib/chat-wallpapers";
+import type {
+  ChatWallpaper,
+  ChatWallpaperTarget,
+} from "@/lib/chat-wallpapers";
 import {
   MOTION_CALL_STATE_EVENT,
   MOTION_CALL_SYNC_REQUEST_EVENT,
@@ -36,6 +39,18 @@ type FriendActivity = {
   id: string;
   isActive: boolean;
 };
+
+type ConversationWallpaperState = Pick<
+  ConversationDto,
+  | "chatWallpaper"
+  | "chatWallpaperUrl"
+  | "chatWallpaperLight"
+  | "chatWallpaperLightUrl"
+  | "chatWallpaperDark"
+  | "chatWallpaperDarkUrl"
+  | "chatWallpaperBlur"
+  | "chatWallpaperDim"
+>;
 
 function isViewportMode(value: string | null): value is ViewportMode {
   return value === "desktop" || value === "tablet" || value === "mobile";
@@ -613,17 +628,27 @@ export default function CallsPage() {
   );
 
   const saveChatWallpaper = useCallback(
-    async (wallpaper: ChatWallpaper) => {
+    async (wallpaper: ChatWallpaper, slot: ChatWallpaperTarget = "all") => {
       if (!activeId || savingChatWallpaper) {
         return;
       }
 
       const currentConversation =
         conversations.find((conversation) => conversation.id === activeId) ?? null;
-      if (
-        currentConversation?.chatWallpaper === wallpaper &&
-        !currentConversation.chatWallpaperUrl
-      ) {
+      const currentSlotWallpaper =
+        slot === "light"
+          ? currentConversation?.chatWallpaperLight
+          : slot === "dark"
+            ? currentConversation?.chatWallpaperDark
+            : currentConversation?.chatWallpaper;
+      const currentSlotWallpaperUrl =
+        slot === "light"
+          ? currentConversation?.chatWallpaperLightUrl
+          : slot === "dark"
+            ? currentConversation?.chatWallpaperDarkUrl
+            : currentConversation?.chatWallpaperUrl;
+
+      if (currentSlotWallpaper === wallpaper && !currentSlotWallpaperUrl) {
         return;
       }
 
@@ -633,8 +658,20 @@ export default function CallsPage() {
           conversation.id === activeId
             ? {
                 ...conversation,
-                chatWallpaper: wallpaper,
-                chatWallpaperUrl: undefined,
+                ...(slot === "light"
+                  ? {
+                      chatWallpaperLight: wallpaper,
+                      chatWallpaperLightUrl: undefined,
+                    }
+                  : slot === "dark"
+                    ? {
+                        chatWallpaperDark: wallpaper,
+                        chatWallpaperDarkUrl: undefined,
+                      }
+                    : {
+                        chatWallpaper: wallpaper,
+                        chatWallpaperUrl: undefined,
+                      }),
               }
             : conversation,
         ),
@@ -642,22 +679,17 @@ export default function CallsPage() {
 
       try {
         const payload = await req<{
-          conversation: {
-            id: string;
-            chatWallpaper?: ChatWallpaperSelection;
-            chatWallpaperUrl?: string;
-          };
+          conversation: { id: string } & ConversationWallpaperState;
         }>(`/api/messages/${activeId}/wallpaper`, {
           method: "PATCH",
-          body: JSON.stringify({ wallpaper }),
+          body: JSON.stringify({ wallpaper, slot }),
         });
         setConversations((current) =>
           current.map((conversation) =>
             conversation.id === payload.conversation.id
               ? {
                   ...conversation,
-                  chatWallpaper: payload.conversation.chatWallpaper,
-                  chatWallpaperUrl: payload.conversation.chatWallpaperUrl,
+                  ...payload.conversation,
                 }
               : conversation,
           ),
@@ -668,8 +700,20 @@ export default function CallsPage() {
             conversation.id === activeId
               ? {
                   ...conversation,
-                  chatWallpaper: currentConversation?.chatWallpaper,
-                  chatWallpaperUrl: currentConversation?.chatWallpaperUrl,
+                  ...(slot === "light"
+                    ? {
+                        chatWallpaperLight: currentConversation?.chatWallpaperLight,
+                        chatWallpaperLightUrl: currentConversation?.chatWallpaperLightUrl,
+                      }
+                    : slot === "dark"
+                      ? {
+                          chatWallpaperDark: currentConversation?.chatWallpaperDark,
+                          chatWallpaperDarkUrl: currentConversation?.chatWallpaperDarkUrl,
+                        }
+                      : {
+                          chatWallpaper: currentConversation?.chatWallpaper,
+                          chatWallpaperUrl: currentConversation?.chatWallpaperUrl,
+                        }),
                 }
               : conversation,
           ),
@@ -686,105 +730,68 @@ export default function CallsPage() {
     [activeId, conversations, savingChatWallpaper],
   );
 
-  const resetChatWallpaper = useCallback(async () => {
-    if (!activeId || savingChatWallpaper) {
-      return;
-    }
+  const resetChatWallpaper = useCallback(
+    async (slot: ChatWallpaperTarget = "all") => {
+      if (!activeId || savingChatWallpaper) {
+        return;
+      }
 
-    const currentConversation =
-      conversations.find((conversation) => conversation.id === activeId) ?? null;
-    if (!currentConversation?.chatWallpaper && !currentConversation?.chatWallpaperUrl) {
-      return;
-    }
+      const currentConversation =
+        conversations.find((conversation) => conversation.id === activeId) ?? null;
+      const hasCurrentValue =
+        slot === "light"
+          ? Boolean(
+              currentConversation?.chatWallpaperLight ||
+                currentConversation?.chatWallpaperLightUrl,
+            )
+          : slot === "dark"
+            ? Boolean(
+                currentConversation?.chatWallpaperDark ||
+                  currentConversation?.chatWallpaperDarkUrl,
+              )
+            : Boolean(currentConversation?.chatWallpaper || currentConversation?.chatWallpaperUrl);
+      if (!hasCurrentValue) {
+        return;
+      }
 
-    setSavingChatWallpaper(true);
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === activeId
-          ? {
-              ...conversation,
-              chatWallpaper: undefined,
-              chatWallpaperUrl: undefined,
-            }
-          : conversation,
-      ),
-    );
-
-    try {
-      const payload = await req<{
-        conversation: {
-          id: string;
-          chatWallpaper?: ChatWallpaperSelection;
-          chatWallpaperUrl?: string;
-        };
-      }>(`/api/messages/${activeId}/wallpaper`, {
-        method: "PATCH",
-        body: JSON.stringify({ wallpaper: null }),
-      });
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === payload.conversation.id
-            ? {
-                ...conversation,
-                chatWallpaper: payload.conversation.chatWallpaper,
-                chatWallpaperUrl: payload.conversation.chatWallpaperUrl,
-              }
-            : conversation,
-        ),
-      );
-    } catch (wallpaperError) {
+      setSavingChatWallpaper(true);
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === activeId
             ? {
                 ...conversation,
-                chatWallpaper: currentConversation.chatWallpaper,
-                chatWallpaperUrl: currentConversation.chatWallpaperUrl,
+                ...(slot === "light"
+                  ? {
+                      chatWallpaperLight: undefined,
+                      chatWallpaperLightUrl: undefined,
+                    }
+                  : slot === "dark"
+                    ? {
+                        chatWallpaperDark: undefined,
+                        chatWallpaperDarkUrl: undefined,
+                      }
+                    : {
+                        chatWallpaper: undefined,
+                        chatWallpaperUrl: undefined,
+                      }),
               }
             : conversation,
         ),
       );
-      setError(
-        wallpaperError instanceof Error
-          ? wallpaperError.message
-          : "Could not reset the chat wallpaper.",
-      );
-    } finally {
-      setSavingChatWallpaper(false);
-    }
-  }, [activeId, conversations, savingChatWallpaper]);
-
-  const uploadChatWallpaper = useCallback(
-    async (file: File | null) => {
-      if (!activeId || !file || savingChatWallpaper) {
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      const currentConversation =
-        conversations.find((conversation) => conversation.id === activeId) ?? null;
-
-      setSavingChatWallpaper(true);
 
       try {
         const payload = await req<{
-          conversation: {
-            id: string;
-            chatWallpaper?: ChatWallpaperSelection;
-            chatWallpaperUrl?: string;
-          };
+          conversation: { id: string } & ConversationWallpaperState;
         }>(`/api/messages/${activeId}/wallpaper`, {
-          method: "POST",
-          body: formData,
+          method: "PATCH",
+          body: JSON.stringify({ wallpaper: null, slot }),
         });
         setConversations((current) =>
           current.map((conversation) =>
             conversation.id === payload.conversation.id
               ? {
                   ...conversation,
-                  chatWallpaper: payload.conversation.chatWallpaper,
-                  chatWallpaperUrl: payload.conversation.chatWallpaperUrl,
+                  ...payload.conversation,
                 }
               : conversation,
           ),
@@ -795,8 +802,87 @@ export default function CallsPage() {
             conversation.id === activeId
               ? {
                   ...conversation,
-                  chatWallpaper: currentConversation?.chatWallpaper,
-                  chatWallpaperUrl: currentConversation?.chatWallpaperUrl,
+                  ...(slot === "light"
+                    ? {
+                        chatWallpaperLight: currentConversation?.chatWallpaperLight,
+                        chatWallpaperLightUrl: currentConversation?.chatWallpaperLightUrl,
+                      }
+                    : slot === "dark"
+                      ? {
+                          chatWallpaperDark: currentConversation?.chatWallpaperDark,
+                          chatWallpaperDarkUrl: currentConversation?.chatWallpaperDarkUrl,
+                        }
+                      : {
+                          chatWallpaper: currentConversation?.chatWallpaper,
+                          chatWallpaperUrl: currentConversation?.chatWallpaperUrl,
+                        }),
+                }
+              : conversation,
+          ),
+        );
+        setError(
+          wallpaperError instanceof Error
+            ? wallpaperError.message
+            : "Could not reset the chat wallpaper.",
+        );
+      } finally {
+        setSavingChatWallpaper(false);
+      }
+    },
+    [activeId, conversations, savingChatWallpaper],
+  );
+
+  const uploadChatWallpaper = useCallback(
+    async (file: File | null, slot: ChatWallpaperTarget = "all") => {
+      if (!activeId || !file || savingChatWallpaper) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("slot", slot);
+      const currentConversation =
+        conversations.find((conversation) => conversation.id === activeId) ?? null;
+
+      setSavingChatWallpaper(true);
+
+      try {
+        const payload = await req<{
+          conversation: { id: string } & ConversationWallpaperState;
+        }>(`/api/messages/${activeId}/wallpaper`, {
+          method: "POST",
+          body: formData,
+        });
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === payload.conversation.id
+              ? {
+                  ...conversation,
+                  ...payload.conversation,
+                }
+              : conversation,
+          ),
+        );
+      } catch (wallpaperError) {
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === activeId
+              ? {
+                  ...conversation,
+                  ...(slot === "light"
+                    ? {
+                        chatWallpaperLight: currentConversation?.chatWallpaperLight,
+                        chatWallpaperLightUrl: currentConversation?.chatWallpaperLightUrl,
+                      }
+                    : slot === "dark"
+                      ? {
+                          chatWallpaperDark: currentConversation?.chatWallpaperDark,
+                          chatWallpaperDarkUrl: currentConversation?.chatWallpaperDarkUrl,
+                        }
+                      : {
+                          chatWallpaper: currentConversation?.chatWallpaper,
+                          chatWallpaperUrl: currentConversation?.chatWallpaperUrl,
+                        }),
                 }
               : conversation,
           ),
@@ -808,6 +894,66 @@ export default function CallsPage() {
         );
       } finally {
         setSavingChatWallpaper(false);
+      }
+    },
+    [activeId, conversations, savingChatWallpaper],
+  );
+
+  const saveChatWallpaperEffects = useCallback(
+    async (effects: { blur: number; dim: number }) => {
+      if (!activeId || savingChatWallpaper) {
+        return;
+      }
+
+      const currentConversation =
+        conversations.find((conversation) => conversation.id === activeId) ?? null;
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === activeId
+            ? {
+                ...conversation,
+                chatWallpaperBlur: effects.blur,
+                chatWallpaperDim: effects.dim,
+              }
+            : conversation,
+        ),
+      );
+
+      try {
+        const payload = await req<{
+          conversation: { id: string } & ConversationWallpaperState;
+        }>(`/api/messages/${activeId}/wallpaper`, {
+          method: "PATCH",
+          body: JSON.stringify(effects),
+        });
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === payload.conversation.id
+              ? {
+                  ...conversation,
+                  ...payload.conversation,
+                }
+              : conversation,
+          ),
+        );
+      } catch (wallpaperError) {
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === activeId
+              ? {
+                  ...conversation,
+                  chatWallpaperBlur: currentConversation?.chatWallpaperBlur,
+                  chatWallpaperDim: currentConversation?.chatWallpaperDim,
+                }
+              : conversation,
+          ),
+        );
+        setError(
+          wallpaperError instanceof Error
+            ? wallpaperError.message
+            : "Could not update chat wallpaper styling.",
+        );
       }
     },
     [activeId, conversations, savingChatWallpaper],
@@ -947,6 +1093,12 @@ export default function CallsPage() {
             callBusy={callBusy}
             chatWallpaper={activeConversation?.chatWallpaper}
             chatWallpaperUrl={activeConversation?.chatWallpaperUrl}
+            chatWallpaperLight={activeConversation?.chatWallpaperLight}
+            chatWallpaperLightUrl={activeConversation?.chatWallpaperLightUrl}
+            chatWallpaperDark={activeConversation?.chatWallpaperDark}
+            chatWallpaperDarkUrl={activeConversation?.chatWallpaperDarkUrl}
+            chatWallpaperBlur={activeConversation?.chatWallpaperBlur}
+            chatWallpaperDim={activeConversation?.chatWallpaperDim}
             defaultChatWallpaper={user?.chatWallpaper}
             savingChatWallpaper={savingChatWallpaper}
             chatThreadRef={chatThreadRef}
@@ -969,14 +1121,17 @@ export default function CallsPage() {
             onToggleRecording={() => undefined}
             onStartVoiceCall={() => startGlobalCall("voice")}
             onStartVideoCall={() => startGlobalCall("video")}
-            onChatWallpaperChange={(wallpaper) => {
-              void saveChatWallpaper(wallpaper);
+            onChatWallpaperChange={(wallpaper, target) => {
+              void saveChatWallpaper(wallpaper, target);
             }}
-            onUploadChatWallpaper={(file) => {
-              void uploadChatWallpaper(file);
+            onUploadChatWallpaper={(file, target) => {
+              void uploadChatWallpaper(file, target);
             }}
-            onResetChatWallpaper={() => {
-              void resetChatWallpaper();
+            onResetChatWallpaper={(target) => {
+              void resetChatWallpaper(target);
+            }}
+            onChatWallpaperEffectsChange={(effects) => {
+              void saveChatWallpaperEffects(effects);
             }}
             onDeleteRecording={(messageId) => {
               void deleteRecordingMessage(messageId);

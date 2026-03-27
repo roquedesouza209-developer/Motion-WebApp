@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import {
+  clampChatWallpaperBlur,
+  clampChatWallpaperDim,
   DEFAULT_CHAT_WALLPAPER,
   isChatWallpaper,
   isChatWallpaperSelection,
@@ -1141,6 +1143,26 @@ function normalizeDatabase(raw: unknown): MotionDb {
             conversation.chatWallpaperUrl.startsWith("/uploads/")
               ? conversation.chatWallpaperUrl
               : undefined,
+          chatWallpaperLight: isChatWallpaperSelection(conversation.chatWallpaperLight)
+            ? conversation.chatWallpaperLight
+            : undefined,
+          chatWallpaperLightUrl:
+            conversation.chatWallpaperLight === "custom" &&
+            typeof conversation.chatWallpaperLightUrl === "string" &&
+            conversation.chatWallpaperLightUrl.startsWith("/uploads/")
+              ? conversation.chatWallpaperLightUrl
+              : undefined,
+          chatWallpaperDark: isChatWallpaperSelection(conversation.chatWallpaperDark)
+            ? conversation.chatWallpaperDark
+            : undefined,
+          chatWallpaperDarkUrl:
+            conversation.chatWallpaperDark === "custom" &&
+            typeof conversation.chatWallpaperDarkUrl === "string" &&
+            conversation.chatWallpaperDarkUrl.startsWith("/uploads/")
+              ? conversation.chatWallpaperDarkUrl
+              : undefined,
+          chatWallpaperBlur: clampChatWallpaperBlur(conversation.chatWallpaperBlur),
+          chatWallpaperDim: clampChatWallpaperDim(conversation.chatWallpaperDim),
           typingByUserId: normalizeTypingMap(conversation.typingByUserId),
         }))
       : [],

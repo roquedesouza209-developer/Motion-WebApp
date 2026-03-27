@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { isChatWallpaper } from "@/lib/chat-wallpapers";
+import {
+  clampChatWallpaperBlur,
+  clampChatWallpaperDim,
+  isChatWallpaper,
+  isChatWallpaperTarget,
+  type ChatWallpaperSelection,
+  type ChatWallpaperTarget,
+} from "@/lib/chat-wallpapers";
 import { getAuthUser } from "@/lib/server/auth";
 import { updateDb } from "@/lib/server/database";
 import { deleteUploadedMedia, storeUploadedMedia } from "@/lib/server/media";
@@ -13,7 +20,98 @@ type RouteContext = {
 
 type PatchBody = {
   wallpaper?: string | null;
+  slot?: string | null;
+  blur?: number;
+  dim?: number;
 };
+
+function getWallpaperStateForSlot(
+  conversation: {
+    chatWallpaper?: ChatWallpaperSelection;
+    chatWallpaperUrl?: string;
+    chatWallpaperLight?: ChatWallpaperSelection;
+    chatWallpaperLightUrl?: string;
+    chatWallpaperDark?: ChatWallpaperSelection;
+    chatWallpaperDarkUrl?: string;
+  },
+  slot: ChatWallpaperTarget,
+) {
+  if (slot === "light") {
+    return {
+      wallpaper: conversation.chatWallpaperLight,
+      url: conversation.chatWallpaperLightUrl,
+    };
+  }
+
+  if (slot === "dark") {
+    return {
+      wallpaper: conversation.chatWallpaperDark,
+      url: conversation.chatWallpaperDarkUrl,
+    };
+  }
+
+  return {
+    wallpaper: conversation.chatWallpaper,
+    url: conversation.chatWallpaperUrl,
+  };
+}
+
+function setWallpaperStateForSlot(
+  conversation: {
+    chatWallpaper?: ChatWallpaperSelection;
+    chatWallpaperUrl?: string;
+    chatWallpaperLight?: ChatWallpaperSelection;
+    chatWallpaperLightUrl?: string;
+    chatWallpaperDark?: ChatWallpaperSelection;
+    chatWallpaperDarkUrl?: string;
+  },
+  slot: ChatWallpaperTarget,
+  next: {
+    wallpaper?: ChatWallpaperSelection;
+    url?: string;
+  },
+) {
+  if (slot === "light") {
+    conversation.chatWallpaperLight = next.wallpaper;
+    conversation.chatWallpaperLightUrl = next.url;
+    return;
+  }
+
+  if (slot === "dark") {
+    conversation.chatWallpaperDark = next.wallpaper;
+    conversation.chatWallpaperDarkUrl = next.url;
+    return;
+  }
+
+  conversation.chatWallpaper = next.wallpaper;
+  conversation.chatWallpaperUrl = next.url;
+}
+
+function buildConversationWallpaperResponse(
+  conversation: {
+    id: string;
+    chatWallpaper?: ChatWallpaperSelection;
+    chatWallpaperUrl?: string;
+    chatWallpaperLight?: ChatWallpaperSelection;
+    chatWallpaperLightUrl?: string;
+    chatWallpaperDark?: ChatWallpaperSelection;
+    chatWallpaperDarkUrl?: string;
+    chatWallpaperBlur?: number;
+    chatWallpaperDim?: number;
+  },
+) {
+  return {
+    id: conversation.id,
+    chatWallpaper: conversation.chatWallpaper,
+    chatWallpaperUrl: conversation.chatWallpaperUrl,
+    chatWallpaperLight: conversation.chatWallpaperLight,
+    chatWallpaperLightUrl: conversation.chatWallpaperLightUrl,
+    chatWallpaperDark: conversation.chatWallpaperDark,
+    chatWallpaperDarkUrl: conversation.chatWallpaperDarkUrl,
+    chatWallpaperBlur: conversation.chatWallpaperBlur,
+    chatWallpaperDim: conversation.chatWallpaperDim,
+  };
+}
 
 export async function PATCH(request: Request, context: RouteContext) {
   const user = await getAuthUser(request);
@@ -32,6 +130,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { conversationId } = await context.params;
   const wallpaper = body.wallpaper;
+  const slot = isChatWallpaperTarget(body.slot) ? body.slot : "all";
+  const hasBlur = body.blur !== undefined;
+  const hasDim = body.dim !== undefined;
 
   const result = await updateDb((db) => {
     const conversation = db.conversations.find((candidate) => candidate.id === conversationId);
@@ -44,19 +145,33 @@ export async function PATCH(request: Request, context: RouteContext) {
       return { type: "forbidden" as const };
     }
 
+    const currentSlotState = getWallpaperStateForSlot(conversation, slot);
     const previousCustomUrl =
-      conversation.chatWallpaper === "custom" ? conversation.chatWallpaperUrl : undefined;
+      currentSlotState.wallpaper === "custom" ? currentSlotState.url : undefined;
 
-    if (wallpaper === null || wallpaper === "default" || wallpaper === "") {
-      conversation.chatWallpaper = undefined;
-      conversation.chatWallpaperUrl = undefined;
+    if (hasBlur) {
+      conversation.chatWallpaperBlur = clampChatWallpaperBlur(body.blur);
+    }
+
+    if (hasDim) {
+      conversation.chatWallpaperDim = clampChatWallpaperDim(body.dim);
+    }
+
+    if (wallpaper === undefined) {
       return {
         type: "ok" as const,
-        conversation: {
-          id: conversation.id,
-          chatWallpaper: conversation.chatWallpaper,
-          chatWallpaperUrl: conversation.chatWallpaperUrl,
-        },
+        conversation: buildConversationWallpaperResponse(conversation),
+      };
+    }
+
+    if (wallpaper === null || wallpaper === "default" || wallpaper === "") {
+      setWallpaperStateForSlot(conversation, slot, {
+        wallpaper: undefined,
+        url: undefined,
+      });
+      return {
+        type: "ok" as const,
+        conversation: buildConversationWallpaperResponse(conversation),
         previousCustomUrl,
       };
     }
@@ -65,16 +180,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       return { type: "invalid" as const };
     }
 
-    conversation.chatWallpaper = wallpaper;
-    conversation.chatWallpaperUrl = undefined;
+    setWallpaperStateForSlot(conversation, slot, {
+      wallpaper,
+      url: undefined,
+    });
 
     return {
       type: "ok" as const,
-      conversation: {
-        id: conversation.id,
-        chatWallpaper: conversation.chatWallpaper,
-        chatWallpaperUrl: conversation.chatWallpaperUrl,
-      },
+      conversation: buildConversationWallpaperResponse(conversation),
       previousCustomUrl,
     };
   });
@@ -149,6 +262,9 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { conversationId } = await context.params;
+  const rawSlot = formData.get("slot");
+  const slot =
+    typeof rawSlot === "string" && isChatWallpaperTarget(rawSlot) ? rawSlot : "all";
 
   const result = await updateDb((db) => {
     const conversation = db.conversations.find((candidate) => candidate.id === conversationId);
@@ -161,19 +277,18 @@ export async function POST(request: Request, context: RouteContext) {
       return { type: "forbidden" as const };
     }
 
+    const currentSlotState = getWallpaperStateForSlot(conversation, slot);
     const previousCustomUrl =
-      conversation.chatWallpaper === "custom" ? conversation.chatWallpaperUrl : undefined;
+      currentSlotState.wallpaper === "custom" ? currentSlotState.url : undefined;
 
-    conversation.chatWallpaper = "custom";
-    conversation.chatWallpaperUrl = uploadedMedia.mediaUrl;
+    setWallpaperStateForSlot(conversation, slot, {
+      wallpaper: "custom",
+      url: uploadedMedia.mediaUrl,
+    });
 
     return {
       type: "ok" as const,
-      conversation: {
-        id: conversation.id,
-        chatWallpaper: conversation.chatWallpaper,
-        chatWallpaperUrl: conversation.chatWallpaperUrl,
-      },
+      conversation: buildConversationWallpaperResponse(conversation),
       previousCustomUrl,
     };
   });
